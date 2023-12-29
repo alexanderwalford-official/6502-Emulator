@@ -10,6 +10,10 @@
 HINSTANCE hInst;                                // current instance
 WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
 WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
+wchar_t szText[] = L"6502 Emulator";
+HFONT hFont;
+HBITMAP hBitmap;
+
 
 // Forward declarations of functions included in this code module:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
@@ -55,8 +59,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     return (int) msg.wParam;
 }
 
-
-
 //
 //  FUNCTION: MyRegisterClass()
 //
@@ -100,6 +102,46 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
       CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
 
+   hFont = CreateFont(
+       32,                  // Font height (adjust as needed)
+       0,                   // Font width
+       0,                   // Angle of escapement
+       0,                   // Orientation angle
+       FW_NORMAL,           // Font weight
+       FALSE,               // Italic
+       FALSE,               // Underline
+       FALSE,               // Strikeout
+       DEFAULT_CHARSET,     // Character set identifier
+       OUT_DEFAULT_PRECIS,  // Output precision
+       CLIP_DEFAULT_PRECIS, // Clipping precision
+       DEFAULT_QUALITY,     // Output quality
+       DEFAULT_PITCH,       // Pitch and family
+       L"Arial"             // Font face name
+   );
+
+   wchar_t absolutePath[MAX_PATH];
+   GetFullPathName(L"header.bmp", MAX_PATH, absolutePath, nullptr);
+   wprintf(L"Image Path: %s\n", absolutePath);
+
+   BITMAP bm;
+   GetObject(hBitmap, sizeof(BITMAP), &bm);
+   wprintf(L"Image Dimensions: %d x %d\n", bm.bmWidth, bm.bmHeight);
+
+
+   // Load the image (adjust the path to your image file)
+   hBitmap = (HBITMAP)LoadImage(NULL, L"header.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+
+   if (hBitmap == NULL) {
+       DWORD error = GetLastError();
+       LPVOID errorMsg;
+       FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM, NULL, error, 0, (LPWSTR)&errorMsg, 0, NULL);
+       MessageBox(NULL, (LPWSTR)errorMsg, L"Error Loading Image", MB_OK | MB_ICONERROR);
+       LocalFree(errorMsg);
+   }
+
+   // Select the font into the device context
+   SelectObject(GetDC(hWnd), hFont);
+
    if (!hWnd)
    {
       return FALSE;
@@ -126,32 +168,62 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     switch (message)
     {
     case WM_COMMAND:
+    {
+        int wmId = LOWORD(wParam);
+        // Parse the menu selections:
+        switch (wmId)
         {
-            int wmId = LOWORD(wParam);
-            // Parse the menu selections:
-            switch (wmId)
-            {
-            case IDM_ABOUT:
-                DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
-                break;
-            case IDM_EXIT:
-                DestroyWindow(hWnd);
-                break;
-            default:
-                return DefWindowProc(hWnd, message, wParam, lParam);
-            }
+        case IDM_ABOUT:
+            DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
+            break;
+        case IDM_EXIT:
+            DestroyWindow(hWnd);
+            break;
+        default:
+            return DefWindowProc(hWnd, message, wParam, lParam);
         }
-        break;
+    }
+    break;
     case WM_PAINT:
-        {
-            PAINTSTRUCT ps;
-            HDC hdc = BeginPaint(hWnd, &ps);
-            // TODO: Add any drawing code that uses hdc here...
-            EndPaint(hWnd, &ps);
+    {
+        PAINTSTRUCT ps;
+        HDC hdc = BeginPaint(hWnd, &ps);
+
+        // Draw text on the window
+        TextOut(hdc, 10, 10, szText, wcslen(szText));
+
+        // Create a compatible DC for the image
+        HDC hdcImage = CreateCompatibleDC(hdc);
+
+        // Select the image into the compatible DC
+        SelectObject(hdcImage, hBitmap);
+
+        // Get the dimensions of the image
+        BITMAP bm;
+        GetObject(hBitmap, sizeof(BITMAP), &bm);
+        wprintf(L"Image Dimensions: %d x %d\n", bm.bmWidth, bm.bmHeight);
+
+
+        // Draw the image onto the window using StretchBlt
+        StretchBlt(hdc, 0, 0, 200, 200, hdcImage, 0, 0, bm.bmWidth, bm.bmHeight, SRCCOPY);
+
+        if (!StretchBlt(hdc, 0, 0, bm.bmWidth, bm.bmHeight, hdcImage, 0, 0, bm.bmWidth, bm.bmHeight, SRCCOPY)) {
+            DWORD error = GetLastError();
+            LPVOID errorMsg;
+            FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM, NULL, error, 0, (LPWSTR)&errorMsg, 0, NULL);
+            MessageBox(NULL, (LPWSTR)errorMsg, L"Error Drawing Image", MB_OK | MB_ICONERROR);
+            LocalFree(errorMsg);
         }
-        break;
+
+        // Clean up
+        DeleteDC(hdcImage);
+
+        EndPaint(hWnd, &ps);
+    }
+    break;
     case WM_DESTROY:
         PostQuitMessage(0);
+        DeleteObject(hFont);
         break;
     default:
         return DefWindowProc(hWnd, message, wParam, lParam);

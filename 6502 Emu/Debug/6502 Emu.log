@@ -1,0 +1,6 @@
+﻿  6502 Emu.cpp
+  main.cpp
+C:\Users\alexa\Documents\GitHub\6502-Emulator\6502 Emu\main.cpp(124,22): warning C4305: '=': truncation from 'int' to 'byte'
+C:\Users\alexa\Documents\GitHub\6502-Emulator\6502 Emu\main.cpp(124,22): warning C4309: '=': truncation of constant value
+  Generating Code...
+  6502 Emu.vcxproj -> C:\Users\alexa\Documents\GitHub\6502-Emulator\Debug\6502 Emu.exe
